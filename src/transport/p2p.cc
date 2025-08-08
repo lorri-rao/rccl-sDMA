@@ -87,6 +87,7 @@ struct p2pResources {
   int shmSize;
   ncclShmHandle_t handle;
   ncclShmIpcDesc_t desc;
+  //Lorri, need to change this to all2all
   uint32_t* next_hdp_reg;  // Next GPU in ring (for p2p transport use only)
 };
 
@@ -812,7 +813,8 @@ static ncclResult_t p2pSendProxyProgress(struct ncclProxyState* proxyState, stru
         // Check GPU has sent everything
         if ((*recvTail > sub->base+sub->transmitted)) {
           int size = connFifo[buffSlot].size;
-          CUDACHECK(cudaMemcpyAsync(resources->recvFifo+buffSlot*stepSize, resources->ceDevBuff+buffSlot*stepSize, size, cudaMemcpyDeviceToDevice, resources->stream));
+          INFO(NCCL_P2P," cudaMemcpyAsync with size %d",size);
+          CUDACHECK(cudaMemcpyAsync(resources->recvFifo+buffSlot*stepSize, resources->ceDevBuff+buffSlot*stepSize, size, hipMemcpyDeviceToDeviceNoCU, resources->stream));
           CUDACHECK(cudaEventRecord(resources->events[buffSlot], resources->stream));
           sub->transmitted += args->sliceSteps;
         }
