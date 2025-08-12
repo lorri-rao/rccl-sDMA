@@ -362,6 +362,7 @@ void ncclDebugLog(ncclDebugLogLevel level, unsigned long flags, const char *file
   // necessary since we write bytes instead of the string.
   buffer[len++] = '\n';
   fwrite(buffer, 1, len, ncclDebugFile);
+  fflush(ncclDebugFile);
 }
 
 NCCL_API(void, ncclResetDebugInit);

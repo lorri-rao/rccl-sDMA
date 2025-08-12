@@ -447,14 +447,17 @@ ncclResult_t p2pSendSetup(struct ncclComm* comm, struct ncclTopoGraph* graph, st
   if (P2P_SAME_PID((comm->peerInfo + info->rank), myInfo) && (comm->peerInfo[info->rank].cudaDev != myInfo->cudaDev)) req.refcount++;
   NCCLCHECK(ncclProxyConnect(comm, TRANSPORT_P2P, 1, info->rank, &send->proxyConn));
   if (useMemcpy) {
+	  //assert(false);
     NCCLCHECK(ncclProxyCallBlocking(comm, &send->proxyConn, ncclProxyMsgSetup, NULL, 0, &resources->proxyInfo, sizeof(struct p2pShmProxyInfo)));
     memcpy(&info->desc, &resources->proxyInfo.desc, sizeof(ncclShmIpcDesc_t));
+    
+    //assert(false);
   } else {
     NCCLCHECK(ncclProxyCallBlocking(comm, &send->proxyConn, ncclProxyMsgSetup, &req, sizeof(struct ncclP2pRequest), &info->p2pBuff, sizeof(struct ncclP2pBuff)));
     NCCLCHECK(p2pMap(comm, &send->proxyConn, myInfo, comm->peerInfo+info->rank, &info->p2pBuff, (void**)&resources->sendDevMem, &resources->sendMemIpc));
     resources->sendMemSameProc = P2P_SAME_PID(myInfo, (comm->peerInfo + info->rank));
   }
-
+	puts("DEBUG init call finish");
   return ncclSuccess;
 }
 
@@ -534,8 +537,9 @@ static ncclResult_t p2pSendConnect(struct ncclComm* comm, struct ncclConnect* co
     }
   }
   send->conn.stepSize = comm->buffSizes[NCCL_PROTO_SIMPLE]/NCCL_STEPS;
-
+	
   if (useMemcpy) {
+	  //assert(false);
     send->conn.tail = &resources->proxyInfo.ceRecvMem->tail;
     send->conn.connFifo = resources->proxyInfo.ceRecvMem->connFifo;
     send->conn.head = &resources->proxyInfo.devShm->sendMem.head;
@@ -550,6 +554,8 @@ static ncclResult_t p2pSendConnect(struct ncclComm* comm, struct ncclConnect* co
   }
   // We must assign the proxyConn's proxyProgress property for proper checking at enqueue-time
   send->proxyConn.proxyProgress = p2pTransport.send.proxyProgress;
+  //assert(false);
+  puts("DEBUG p2pSendConnect finish");
   return ncclSuccess;
 }
 
@@ -784,7 +790,8 @@ static ncclResult_t p2pRecvProxyFree(struct ncclProxyConnection* connection, str
 
 // CE memcpy support
 static ncclResult_t p2pSendProxyProgress(struct ncclProxyState* proxyState, struct ncclProxyArgs* args) {
-  if (args->state == ncclProxyOpReady) {
+  puts("call to proxy progress");//assert(false);
+	if (args->state == ncclProxyOpReady) {
     for (int s=0; s<args->nsubs; s++) {
       struct ncclProxySubArgs* sub = args->subs+s;
       struct p2pShmProxyInfo* resources = (struct p2pShmProxyInfo*) (sub->connection->transportResources);
@@ -798,46 +805,68 @@ static ncclResult_t p2pSendProxyProgress(struct ncclProxyState* proxyState, stru
   if (args->state == ncclProxyOpProgress) {
     int p = args->protocol;
     int stepSize = proxyState->buffSizes[p] / NCCL_STEPS;
+    //printf("")
     for (int s=0; s<args->nsubs; s++) {
+	  //  printf("nsubs %d\n",args->nsubs);
+	    //puts("enter");
       struct ncclProxySubArgs* sub = args->subs+s;
       struct p2pShmProxyInfo* resources = (struct p2pShmProxyInfo*) (sub->connection->transportResources);
       if (p != NCCL_PROTO_SIMPLE) { // Only Simple uses cudaMemcpy
           resources->step = sub->base + sub->nsteps;
           args->done++;
-          continue;
+          puts("skip");
+	  continue;
       }
       if (sub->transmitted < sub->done + NCCL_STEPS && sub->transmitted < sub->nsteps) {
-        int buffSlot = (sub->base+sub->transmitted)%NCCL_STEPS;
+        //puts("core loop");
+	      int buffSlot = (sub->base+sub->transmitted)%NCCL_STEPS;
         volatile struct ncclConnFifo* connFifo = resources->ceRecvMem->connFifo;
         volatile uint64_t* recvTail = &resources->ceRecvMem->tail;
         // Check GPU has sent everything
         if ((*recvTail > sub->base+sub->transmitted)) {
           int size = connFifo[buffSlot].size;
-          INFO(NCCL_P2P," cudaMemcpyAsync with size %d",size);
-          CUDACHECK(cudaMemcpyAsync(resources->recvFifo+buffSlot*stepSize, resources->ceDevBuff+buffSlot*stepSize, size, hipMemcpyDeviceToDeviceNoCU, resources->stream));
+          //assert(false);
+	  INFO(NCCL_P2P," cudaMemcpyAsync with size %d",size);
+          printf(" cudaMemcpyAsync with size %d\n",size);
+	  //fflush(stdout);assert(false);
+	  CUDACHECK(cudaMemcpyAsync(resources->recvFifo+buffSlot*stepSize, resources->ceDevBuff+buffSlot*stepSize, size, hipMemcpyDeviceToDeviceNoCU, resources->stream));
           CUDACHECK(cudaEventRecord(resources->events[buffSlot], resources->stream));
           sub->transmitted += args->sliceSteps;
         }
       }
+      //assert(false);
       if (sub->done < sub->transmitted) {
         int buffSlot = (sub->base+sub->done)%NCCL_STEPS;
         cudaError_t res = cudaEventQuery(resources->events[buffSlot]);
-        if (res != cudaErrorNotReady) CUDACHECK(res);
-        if (res == cudaSuccess) {
+        if (res != cudaErrorNotReady) {CUDACHECK(res);puts("event not finished");}
+         printf("res %d\n",res);
+	if (res == cudaSuccess) {
+		//printf("finish %d %d\n",sub->done,args->sliceSteps);
           sub->done += args->sliceSteps;
           // Notify SHM
+	  printf("finish %d %d\n",sub->done,args->sliceSteps);
           resources->shm->recvMem.tail = sub->base + sub->done;
         }
+		//puts()
+		//printf("%d of %d %d of %d job: %p\n",sub->nsteps,sub->done,args->done,args->nsubs,args);
+	
         if (sub->done == sub->nsteps) {
           resources->step = sub->base + sub->nsteps;
           args->done++;
         }
+
+	//printf("%d of %d %d of %d job: %p\n",sub->nsteps,sub->done,args->done,args->nsubs,args);
       }
     }
     if (args->done == args->nsubs) {
       args->state = ncclProxyOpNone;
     }
+    printf("%d of %d %d of %d job: %p\n",sub->nsteps,sub->done,args->done,args->nsubs,args);
   }
+  #include <signal.h>
+//raise(SIGINT);
+  //assert(false);
+  //puts("DEBUG memcpy issued");
   return ncclSuccess;
 }
 
