@@ -1710,7 +1710,8 @@ static ncclResult_t initTransportsRank(struct ncclComm* comm, struct ncclComm* p
     }
 
     if (ncclParamNvbPreconnect()) {
-      // Connect p2p when using NVB path
+      puts("ncclParamNvbPreconnect");
+	    // Connect p2p when using NVB path
       int nvbNpeers;
       NCCLCHECKGOTO(ncclTopoGetNvbGpus(comm->topo, comm->rank, &nvbNpeers, &nvbPeers), ret, fail);
       for (int r=0; r<nvbNpeers; r++) {

@@ -457,6 +457,8 @@ ncclResult_t p2pSendSetup(struct ncclComm* comm, struct ncclTopoGraph* graph, st
     NCCLCHECK(p2pMap(comm, &send->proxyConn, myInfo, comm->peerInfo+info->rank, &info->p2pBuff, (void**)&resources->sendDevMem, &resources->sendMemIpc));
     resources->sendMemSameProc = P2P_SAME_PID(myInfo, (comm->peerInfo + info->rank));
   }
+   #include <signal.h>
+//raise(SIGINT);// *(int *)0=0;
 	puts("DEBUG init call finish");
   return ncclSuccess;
 }
@@ -556,6 +558,7 @@ static ncclResult_t p2pSendConnect(struct ncclComm* comm, struct ncclConnect* co
   send->proxyConn.proxyProgress = p2pTransport.send.proxyProgress;
   //assert(false);
   puts("DEBUG p2pSendConnect finish");
+ // assert(false);
   return ncclSuccess;
 }
 
@@ -827,7 +830,7 @@ static ncclResult_t p2pSendProxyProgress(struct ncclProxyState* proxyState, stru
           int size = connFifo[buffSlot].size;
           //assert(false);
 	  INFO(NCCL_P2P," cudaMemcpyAsync with size %d",size);
-          printf(" cudaMemcpyAsync with size %d\n",size);
+          printf(" cudaMemcpyAsync with size %d event %p stream %p\n",size,resources->events[buffSlot],resources->stream);
 	  //fflush(stdout);assert(false);
 	  CUDACHECK(cudaMemcpyAsync(resources->recvFifo+buffSlot*stepSize, resources->ceDevBuff+buffSlot*stepSize, size, hipMemcpyDeviceToDeviceNoCU, resources->stream));
           CUDACHECK(cudaEventRecord(resources->events[buffSlot], resources->stream));
@@ -838,13 +841,13 @@ static ncclResult_t p2pSendProxyProgress(struct ncclProxyState* proxyState, stru
       if (sub->done < sub->transmitted) {
         int buffSlot = (sub->base+sub->done)%NCCL_STEPS;
         cudaError_t res = cudaEventQuery(resources->events[buffSlot]);
-        if (res != cudaErrorNotReady) {CUDACHECK(res);puts("event not finished");}
-         printf("res %d\n",res);
+        if (res != cudaErrorNotReady) {CUDACHECK(res);}
+         //printf("res %d\n",res);
 	if (res == cudaSuccess) {
 		//printf("finish %d %d\n",sub->done,args->sliceSteps);
           sub->done += args->sliceSteps;
           // Notify SHM
-	  printf("finish %d %d\n",sub->done,args->sliceSteps);
+	  //printf("finish %d %d\n",sub->done,args->sliceSteps);
           resources->shm->recvMem.tail = sub->base + sub->done;
         }
 		//puts()
@@ -854,15 +857,16 @@ static ncclResult_t p2pSendProxyProgress(struct ncclProxyState* proxyState, stru
           resources->step = sub->base + sub->nsteps;
           args->done++;
         }
-
-	//printf("%d of %d %d of %d job: %p\n",sub->nsteps,sub->done,args->done,args->nsubs,args);
+	printf("checking event %p stream %p res:%d ",resources->events[buffSlot],resources->stream,res);
+	printf("%d of %d %d of %d job: %p",sub->nsteps,sub->done,args->done,args->nsubs,args);
       }
     }
     if (args->done == args->nsubs) {
       args->state = ncclProxyOpNone;
     }
-    printf("%d of %d %d of %d job: %p\n",sub->nsteps,sub->done,args->done,args->nsubs,args);
+    printf("%d of %d job: %p\n",args->done,args->nsubs,args);
   }
+  fflush(stdout);
   #include <signal.h>
 //raise(SIGINT);
   //assert(false);

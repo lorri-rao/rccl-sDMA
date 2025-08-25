@@ -913,11 +913,13 @@ static ncclResult_t ncclTopoGetNchannels(struct ncclComm* comm, int g /*local gp
     // Local rank
     path = system->nodes[GPU].nodes[peer].paths[GPU]+g;
     if (path->type == PATH_NVL) {
+	    puts("path as NVL");
       float nvlBw = ncclTopoXGMISpeed(system->nodes[GPU].nodes[g].gpu.gcn);
       *nChannels = ((IsArchMatch(system->nodes[GPU].nodes[0].gpu.gcn, "gfx942") || IsArchMatch(system->nodes[GPU].nodes[0].gpu.gcn, "gfx950")) ? 4 : 2)*std::max(1, (int)(path->bw / nvlBw));
     } else {
       *nChannels = 2;
     }
+
   } else {
     // Remote rank, use network
     int nNetChannels = ncclParamNChannelsPerNetPeer();
@@ -981,8 +983,9 @@ ncclResult_t ncclTopoComputeP2pChannels(struct ncclComm* comm) {
     comm->p2pnChannels = std::min(pow2Up(comm->p2pnChannels), 4*CHANNEL_LIMIT);
     // p2pnChannelsPerPeer cannot be greater than MAXCHANNELS
     comm->p2pnChannelsPerPeer = std::min(comm->p2pnChannelsPerPeer, MAXCHANNELS);
+    puts("last branch");
   }
-
+   printf("p2p channel %d per peer %d\n",comm->p2pnChannels,comm->p2pnChannelsPerPeer);
   // Init channels that weren't used so far
   for (int c=comm->nChannels; c<std::max(comm->nChannels, comm->p2pnChannels); c++) NCCLCHECK(initChannel(comm, c));
 
