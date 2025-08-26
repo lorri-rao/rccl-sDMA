@@ -25,14 +25,14 @@ def run_all_gather(rank, world_size):
     if enable_profiling:
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         trace_file = f"./trace_{rank}.json"
+        # Each process creates a tensor with its rank
+        device=torch.device(f"cuda:{rank}")
+        tensor = torch.full([10240, 1024], rank).to(device)
+        # Prepare a list of tensors to receive the gathered data
+        tensor_list = [torch.zeros_like(tensor) for _ in range(world_size)]
+        
         # Main profiled section
         with profile(activities=[ProfilerActivity.CUDA], record_shapes=True) as prof:
-            # Each process creates a tensor with its rank
-            device=torch.device(f"cuda:{rank}")
-            tensor = torch.full([10240, 1024], rank).to(device)
-            # Prepare a list of tensors to receive the gathered data
-            tensor_list = [torch.zeros_like(tensor) for _ in range(world_size)]
-        
             # Perform the all_gather operation
             dist.all_gather(tensor_list, tensor)
             print(f"Rank {rank} gathered tensors: {tensor_list}")
