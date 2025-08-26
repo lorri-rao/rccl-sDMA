@@ -28,6 +28,7 @@ def run_all_gather(rank, world_size):
         # Main profiled section
         with profile(activities=[ProfilerActivity.CUDA], record_shapes=True) as prof:
             # Each process creates a tensor with its rank
+            device=torch.device(f"cuda:{rank}")
             tensor = torch.full([12, 1024], rank).to(device)
             # Prepare a list of tensors to receive the gathered data
             tensor_list = [torch.zeros_like(tensor) for _ in range(world_size)]
