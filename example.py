@@ -24,7 +24,7 @@ def run_all_gather(rank, world_size):
     # Configure profiler
     if enable_profiling:
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        trace_file = f"./trace_rank_{rank}_{timestamp}.json"
+        trace_file = f"./trace_{rank}.json"
         # Main profiled section
         with profile(activities=[ProfilerActivity.CUDA], record_shapes=True) as prof:
             # Each process creates a tensor with its rank
