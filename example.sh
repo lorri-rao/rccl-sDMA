@@ -1,0 +1,1 @@
+NCCL_PROTO="SIMPLE"  GPU_MAX_HW_QUEUES=40 python ./example.py
