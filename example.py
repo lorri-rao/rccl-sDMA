@@ -35,7 +35,7 @@ def run_all_gather(rank, world_size):
         with profile(activities=[ProfilerActivity.CUDA], record_shapes=True) as prof:
             # Perform the all_gather operation
             dist.all_gather(tensor_list, tensor)
-            print(f"Rank {rank} gathered tensors: {tensor_list}")
+            # print(f"Rank {rank} gathered tensors: {tensor_list}")
         prof.export_chrome_trace(trace_file)
         cleanup()
 
