@@ -7,9 +7,9 @@ import argparse
 from datetime import datetime
 
 def setup(rank, world_size):
-    os.environ['MASTER_ADDR'] = 'localhost'
+    os.environ['MASTER_ADDR'] = '127.0.0.1'
     os.environ['MASTER_PORT'] = '12355'
-    dist.init_process_group("nccl", rank=rank, world_size=world_size)
+    dist.init_process_group('nccl', rank=rank, timeout=datetime.timedelta(seconds=600), world_size=world_size)
 
 def cleanup():
     dist.destroy_process_group()
@@ -40,8 +40,7 @@ def run_all_gather(rank, world_size):
         cleanup()
 
 if __name__ == "__main__":
-    world_size = torch.cuda.device_count()
-    print(f"Found {world_size} GPUs.")
+    world_size = 8
     mp.spawn(run_all_gather,
              args=(world_size,),
              nprocs=world_size,
