@@ -4,7 +4,6 @@ import torch.distributed as dist
 import torch.multiprocessing as mp
 from torch.profiler import profile, record_function, ProfilerActivity
 import datetime
-from datetime import datetime
 
 def setup(rank, world_size):
     os.environ['MASTER_ADDR'] = '127.0.0.1'
@@ -24,7 +23,7 @@ def run_all_gather(rank, world_size):
     enable_profiling=True
     # Configure profiler
     if enable_profiling:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         trace_file = f"./trace_rank_{rank}_{timestamp}.json"
         # Main profiled section
         with profile(activities=[ProfilerActivity.CUDA], record_shapes=True) as prof:
