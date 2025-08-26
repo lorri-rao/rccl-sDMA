@@ -3,13 +3,13 @@ import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
 from torch.profiler import profile, record_function, ProfilerActivity
-import argparse
+import datetime
 from datetime import datetime
 
 def setup(rank, world_size):
     os.environ['MASTER_ADDR'] = '127.0.0.1'
     os.environ['MASTER_PORT'] = '12355'
-    dist.init_process_group('nccl', rank=rank, timeout=datetime.timedelta(seconds=600), world_size=world_size)
+    dist.init_process_group('nccl', rank=rank, timeout=datetime.timedelta(seconds=20), world_size=world_size)
 
 def cleanup():
     dist.destroy_process_group()
