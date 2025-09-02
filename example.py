@@ -28,8 +28,8 @@ def run_all_gather(rank, world_size):
         trace_file = f"./trace_{rank}.json"
         # Each process creates a tensor with its rank
         device=torch.device(f"cuda:{rank}")
-        tensor = torch.full([10240, 1024], rank).to(device)
-        tensor_out = torch.zeros([10240*world_size*1024]).to(device)
+        tensor = torch.full([10240, 1024], rank, dtype=torch.bfloat16).to(device)
+        tensor_out = torch.zeros([10240*world_size*1024], dtype=torch.bfloat16).to(device)
         # Prepare a list of tensors to receive the gathered data
         tensor_list = [torch.zeros_like(tensor) for _ in range(world_size)]
         
