@@ -36,6 +36,8 @@ def run_all_gather(rank, world_size):
             # Perform the all_gather operation
             dist.all_gather(tensor_list, tensor)
             # print(f"Rank {rank} gathered tensors: {tensor_list}")
+            torch.cuda.synchronize()
+            sleep(1)
         prof.export_chrome_trace(trace_file)
         cleanup()
 
